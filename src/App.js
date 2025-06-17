@@ -11,7 +11,7 @@ const nodeProvider = new NodeProvider('https://lb-fullnode-alephium.notrustverif
 
 function SwapInterface() {
   const { account, connectionStatus, signer } = useWallet();
-  const { balance, updateBalanceForTx, refetchBalance } = useBalance();
+  const { balance } = useBalance();
   const [fromToken, setFromToken] = useState(null);
   const [toToken, setToToken] = useState(null);
   const [amount, setAmount] = useState('');
@@ -26,6 +26,38 @@ function SwapInterface() {
   const [pendingTxId, setPendingTxId] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [completedTx, setCompletedTx] = useState(null);
+
+  // Debug logging for balance and connection status
+  useEffect(() => {
+    console.log('=== Balance Debug ===');
+    console.log('Connection Status:', connectionStatus);
+    console.log('Account:', account);
+    console.log('Balance:', balance);
+    if (balance) {
+      console.log('ALPH Balance:', balance.balance);
+      console.log('Token Balances:', balance.tokenBalances);
+    }
+    console.log('==================');
+
+    // Force UI update when wallet connects
+    if (connectionStatus === 'connected' && account) {
+      console.log('Wallet connected, updating UI...');
+      handleRefreshBalance();
+    }
+  }, [connectionStatus, account, balance]);
+
+  // Handle balance refresh
+  const handleRefreshBalance = () => {
+    if (isBalanceRefreshing) return;
+    setIsBalanceRefreshing(true);
+    
+    // Force a re-render of token selectors
+    setFromToken(prev => prev ? {...prev} : null);
+    setToToken(prev => prev ? {...prev} : null);
+    
+    // Reset the refreshing state after a delay
+    setTimeout(() => setIsBalanceRefreshing(false), 1000);
+  };
 
   // Log wallet connection status changes
   useEffect(() => {
@@ -79,9 +111,9 @@ function SwapInterface() {
     // Check if amount exceeds balance
     let userBalance = 0;
     if (fromToken.symbol === 'ALPH') {
-      userBalance = parseFloat(balance.balance || 0) / Math.pow(10, 18);
+      userBalance = parseFloat(balance?.balance || 0) / Math.pow(10, 18);
     } else {
-      const tokenBalance = balance.tokenBalances?.find(t => t.id === fromToken.id);
+      const tokenBalance = balance?.tokenBalances?.find(t => t.id === fromToken.id);
       userBalance = tokenBalance ? parseFloat(tokenBalance.amount) / Math.pow(10, fromToken.decimals) : 0;
     }
 
@@ -175,35 +207,6 @@ function SwapInterface() {
     };
   }, [fromToken, toToken, amount, fetchQuote, isValidating, txStatus]);
 
-  // Effect for countdown timer
-  useEffect(() => {
-    let timerId;
-    
-    // Don't start countdown if transaction is being validated
-    if (isValidating || txStatus) {
-      return;
-    }
-    
-    if (fromToken && toToken && amount && parseFloat(amount) > 0) {
-      setNextUpdateIn(30);
-      
-      timerId = setInterval(() => {
-        setNextUpdateIn(prev => {
-          if (prev <= 1) {
-            return 30; // Reset to 30 when it reaches 0
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timerId) {
-        clearInterval(timerId);
-      }
-    };
-  }, [fromToken, toToken, amount, quote, isValidating, txStatus]);
-
   // Fetch tokens on mount
   useEffect(() => {
     const fetchTokens = async () => {
@@ -229,22 +232,34 @@ function SwapInterface() {
   }, []);
 
   // Check transaction status
+  const checkTxStatus = async (txId) => {
+    try {
+      const response = await nodeProvider.transactions.getTransactionsStatus({ txId });
+      console.log('Transaction status:', response);
+      return response;
+    } catch (error) {
+      console.error('Error checking transaction status:', error);
+      return null;
+    }
+  };
+
+  // Monitor transaction status
   useEffect(() => {
     let intervalId;
 
-    const checkTxStatus = async () => {
+    const monitorTxStatus = async () => {
       if (!pendingTxId) return;
 
       try {
-        const status = await nodeProvider.transactions.getTransactionsStatus({ txId: pendingTxId });
+        const status = await checkTxStatus(pendingTxId);
         setTxStatus(status.type);
 
         if (status.type === 'Confirmed') {
           setTxStatus('Done');
           setCompletedTx(pendingTxId);
           setPendingTxId(null);
-          // Update balance after transaction is confirmed
-          updateBalanceForTx(pendingTxId);
+          // Force UI update after transaction is confirmed
+          handleRefreshBalance();
         }
       } catch (err) {
         if (err.message && err.message.includes('404')) {
@@ -256,8 +271,8 @@ function SwapInterface() {
     };
 
     if (pendingTxId) {
-      checkTxStatus();
-      intervalId = setInterval(checkTxStatus, 5000);
+      monitorTxStatus();
+      intervalId = setInterval(monitorTxStatus, 5000);
     }
 
     return () => {
@@ -265,18 +280,7 @@ function SwapInterface() {
         clearInterval(intervalId);
       }
     };
-  }, [pendingTxId, updateBalanceForTx]);
-
-  const checkTxStatus = async (txId) => {
-    try {
-      const response = await nodeProvider.transactions.getTransactionsStatus({ txId });
-      console.log('Transaction status:', response);
-      return response;
-    } catch (error) {
-      console.error('Error checking transaction status:', error);
-      return null;
-    }
-  };
+  }, [pendingTxId]);
 
   const validateTransaction = async (txId) => {
     setIsValidating(true);
@@ -301,8 +305,6 @@ function SwapInterface() {
           setTxStatus('Transaction in memory pool...');
           setPendingTxId(txId);
           setIsValidating(false);
-          // Start watching for balance updates when tx hits mempool
-          updateBalanceForTx(txId, 1);
           return true;
         }
 
@@ -311,8 +313,8 @@ function SwapInterface() {
           setCompletedTx(txId);
           setPendingTxId(null);
           setIsValidating(false);
-          // Force a balance update after confirmation
-          updateBalanceForTx(txId, 1);
+          // Force UI update after confirmation
+          handleRefreshBalance();
           // Clear input state
           setAmount('');
           setQuote(null);
@@ -435,26 +437,6 @@ function SwapInterface() {
     console.log('Balance updated:', balance);
   }, [balance]);
 
-  const handleRefreshBalance = async () => {
-    if (isBalanceRefreshing) return;
-    setIsBalanceRefreshing(true);
-    try {
-      await refetchBalance();
-      // Force a re-render of token selectors
-      setFromToken(prev => prev ? {...prev} : null);
-      setToToken(prev => prev ? {...prev} : null);
-    } catch (error) {
-      console.error('Failed to refresh balance:', error);
-    } finally {
-      setIsBalanceRefreshing(false);
-    }
-  };
-
-  // Add effect to log balance changes
-  useEffect(() => {
-    console.log('Current balance:', balance);
-  }, [balance]);
-
   // Function to find token by ID or symbol
   const findToken = useCallback((idOrSymbol, tokenList) => {
     if (!idOrSymbol || !tokenList?.length) return null;
@@ -509,11 +491,40 @@ function SwapInterface() {
     window.history.replaceState({}, '', newUrl);
   }, [fromToken, toToken]);
 
+  // Effect for countdown timer
+  useEffect(() => {
+    let timerId;
+    
+    // Don't start countdown if transaction is being validated
+    if (isValidating || txStatus) {
+      return;
+    }
+    
+    if (fromToken && toToken && amount && parseFloat(amount) > 0) {
+      setNextUpdateIn(30);
+      
+      timerId = setInterval(() => {
+        setNextUpdateIn(prev => {
+          if (prev <= 1) {
+            return 30; // Reset to 30 when it reaches 0
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerId) {
+        clearInterval(timerId);
+      }
+    };
+  }, [fromToken, toToken, amount, quote, isValidating, txStatus]);
+
   return (
     <div className="App">
       <div className="wallet-header">
         <AlephiumConnectButton 
-          displayAccount={(account) => `${account.address.slice(0, 4)}...${account.address.slice(-4)}`}
+          displayAccount={(account) => `${account.address.slice(0, 4)}${account.address.slice(-4)}`}
         />
         {connectionStatus === 'connected' && account && (
           <div className="wallet-info">
@@ -558,7 +569,11 @@ function SwapInterface() {
                 value={amount}
                 onChange={handleAmountChange}
                 disabled={!fromToken || connectionStatus !== 'connected'}
-                maxAmount={fromToken ? parseFloat(balance[fromToken.id] || 0) / Math.pow(10, fromToken.decimals) : undefined}
+                maxAmount={fromToken && balance ? (
+                  fromToken.symbol === 'ALPH' 
+                    ? parseFloat(balance?.balance || 0) / Math.pow(10, 18)
+                    : parseFloat(balance?.tokens?.find(t => t.id === fromToken.id)?.amount || 0) / Math.pow(10, fromToken.decimals)
+                ) : undefined}
               />
               <TokenSelector
                 selectedToken={fromToken}
@@ -704,6 +719,7 @@ function App() {
       addressGroup={0}
       nodeProvider={nodeProvider}
       theme="rounded"
+      enableDebugLog={true}
     >
       <div className="App">
         <SwapInterface />
