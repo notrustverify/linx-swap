@@ -1,70 +1,74 @@
-# Getting Started with Create React App
+# Linx Swap
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Frontend implementation of a decentralized exchange (DEX) aggregator for the Alephium blockchain. This interface connects to the Linx Labs API to provide optimal token swaps across multiple DEXs.
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+This repository contains the frontend code for Linx Swap. The backend API and routing engine are provided by [Linx Labs](https://linxlabs.org), which:
+- Aggregates liquidity across multiple DEXs
+- Calculates optimal swap routes
+- Splits orders for best execution
+- Provides real-time price quotes
 
-### `yarn start`
+## Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- 🔄 Swap tokens on Alephium with the best rates
+- 📊 Automatic route splitting across multiple DEXs
+- 💰 Real-time price quotes and balance updates
+- 🔒 Direct wallet integration with Alephium
+- ⚡ Fast and efficient transactions
+- 🌐 Infrastructure provided by [No Trust Verify](https://notrustverify.ch)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Supported DEXs
 
-### `yarn test`
+- Ayin
+- Elexium
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Getting Started
 
-### `yarn build`
+### Prerequisites
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Node.js 18 or higher
+- npm or yarn
+- An Alephium wallet
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Installation
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. Clone the repository:
+```bash
+git clone https://github.com/notrustverify/linx-swap.git
+cd linx-swap
+```
 
-### `yarn eject`
+2. Install dependencies:
+```bash
+npm install
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+3. Start the development server:
+```bash
+npm start
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The app will be available at `http://localhost:3000`.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Building for Production
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+To create a production build:
+```bash
+npm run build
+```
 
-## Learn More
+## Contributing
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## License
 
-### Code Splitting
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Acknowledgments
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `yarn build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Swap API and routing engine provided by [Linx Labs](https://linxlabs.org)
+- Infrastructure by [No Trust Verify](https://notrustverify.ch)
+- Built for the Alephium blockchain community

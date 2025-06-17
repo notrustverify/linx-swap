@@ -1,8 +1,11 @@
 {
   "name": "linx-swap",
+  "homepage": "https://notrustverify.github.io/linx-swap",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@alephium/web3": "^1.11.7",
+    "@alephium/web3-react": "^1.11.7",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

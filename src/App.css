@@ -1,5 +1,20 @@
+:root {
+  --primary-bg: #f8f9fe;
+  --card-bg: #ffffff;
+  --border-color: #e2e8f0;
+  --text-primary: #1a202c;
+  --text-secondary: #718096;
+  --accent-blue: #3b82f6;
+}
+
 .App {
-  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: var(--primary-bg);
+  color: var(--text-color);
 }
 
 .App-logo {
@@ -35,4 +50,562 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.swap-container {
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 380px;
+}
+
+.swap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.swap-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.swap-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-button {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-button.refreshing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.swap-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.swap-input {
+  background: var(--primary-bg);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.swap-input-header {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.swap-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  position: relative;
+}
+
+.token-info-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.token-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.network-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.usd-value {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 8px;
+}
+
+.amount-input {
+  flex: 1;
+  max-width: 60%;
+}
+
+.amount-input input {
+  width: 100%;
+  padding: 0;
+  font-size: 28px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.amount-input input:focus {
+  outline: none;
+}
+
+.amount-input input::placeholder {
+  color: var(--text-secondary);
+}
+
+.token-selector {
+  width: 140px;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 12px;
+}
+
+.token-selector:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.token-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.token-symbol {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.swap-arrow-container {
+  display: flex;
+  justify-content: center;
+  margin: -8px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.swap-arrow {
+  background: var(--card-bg);
+  border: 4px solid var(--primary-bg);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.swap-arrow:hover {
+  transform: rotate(180deg);
+  color: var(--accent-blue);
+}
+
+.rate-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 12px;
+  text-align: left;
+}
+
+.swap-button {
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  border: none;
+  background: #0066cc;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.swap-button:hover {
+  background: #0052a3;
+}
+
+.swap-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Center the Connect Alephium button */
+.swap-container :global(.alephium-connect-button) {
+  display: flex;
+  justify-content: center;
+  margin: 16px auto;
+  width: fit-content;
+}
+
+.error-message {
+  margin: 16px 0;
+  padding: 12px;
+  background-color: #fff2f2;
+  border: 1px solid #ffcdd2;
+  border-radius: 8px;
+  color: #d32f2f;
+  font-size: 14px;
+  text-align: left;
+  word-break: break-word;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
+.error-message pre {
+  margin: 8px 0 0 0;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.quote-info {
+  background: var(--primary-bg);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.quote-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+}
+
+/* Token dropdown styles */
+.token-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.token-search {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.token-search input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.token-search input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.token-list {
+  padding: 8px;
+}
+
+.token-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background-color 0.2s;
+}
+
+.token-option:hover {
+  background-color: var(--primary-bg);
+}
+
+.token-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.update-timer {
+  color: #666;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.routes-section {
+  padding: 12px 0;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  margin: 8px 0;
+}
+
+.routes-header {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.route-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.route-percentage {
+  color: #666;
+  min-width: 45px;
+}
+
+.route-path {
+  color: #333;
+  flex: 1;
+  font-size: 13px;
+}
+
+.route-path span {
+  color: #666;
+  font-size: 12px;
+}
+
+/* Alephium Wallet Connect Button Styles */
+.alephium-connect-button {
+  background: #1a1a1a;
+  color: white;
+  border: 1px solid #333;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.alephium-connect-button:hover {
+  background: #333;
+  border-color: #444;
+}
+
+.alephium-connect-button:active {
+  transform: scale(0.98);
+}
+
+.wallet-status {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.wallet-header {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--secondary-bg);
+}
+
+.wallet-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #666;
+}
+
+.refresh-balance-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #0066cc;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.refresh-balance-button:hover {
+  transform: rotate(180deg);
+}
+
+.refresh-balance-button.refreshing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.transaction-status {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.transaction-status.success {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.transaction-status.pending {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.transaction-status.confirmed {
+  background: rgba(0, 255, 0, 0.1);
+  color: #00ff00;
+}
+
+.transaction-status.mempooled {
+  background: rgba(0, 123, 255, 0.1);
+  color: #0088ff;
+}
+
+.transaction-status.loading {
+  background: rgba(255, 255, 255, 0.1);
+  color: #888;
+}
+
+.transaction-status.validating {
+  background: rgba(255, 255, 255, 0.1);
+  color: #888;
+}
+
+.transaction-status.done {
+  background: rgba(0, 255, 0, 0.1);
+  color: #00ff00;
+  font-weight: 500;
+}
+
+.explorer-link {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.explorer-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dex-link {
+  color: #0066cc;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.dex-link:hover {
+  color: #0052a3;
+  text-decoration: underline;
+}
+
+.attribution-footer {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  width: 100%;
+}
+
+.attribution-footer a {
+  color: #0066cc;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.attribution-footer a:hover {
+  color: #0052a3;
+  text-decoration: underline;
 }
