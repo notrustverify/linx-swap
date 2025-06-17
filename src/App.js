@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlephiumWalletProvider, AlephiumConnectButton, useWallet } from '@alephium/web3-react';
 import { NodeProvider } from '@alephium/web3';
 import TokenSelector from './components/TokenSelector';
@@ -27,6 +27,7 @@ function SwapInterface() {
   const [pendingTxId, setPendingTxId] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [completedTx, setCompletedTx] = useState(null);
+  const tokensLoaded = useRef(false);
 
   // Debug logging for balance and connection status
   useEffect(() => {
@@ -204,6 +205,10 @@ function SwapInterface() {
   // Fetch tokens and handle URL parameters
   useEffect(() => {
     const fetchTokensAndHandleParams = async () => {
+      // Skip if tokens are already loaded
+      if (tokensLoaded.current) return;
+      tokensLoaded.current = true;
+
       setIsLoadingTokens(true);
       try {
         const response = await fetch('https://api.linxlabs.org/v1/tokens', {
