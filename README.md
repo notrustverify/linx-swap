@@ -29,7 +29,7 @@ This repository contains the frontend code for Linx Swap. The backend API and ro
 ### Prerequisites
 
 - Node.js 18 or higher
-- npm or yarn
+- Yarn package manager
 - An Alephium wallet
 
 ### Installation
@@ -42,12 +42,12 @@ cd linx-swap
 
 2. Install dependencies:
 ```bash
-npm install
+yarn install
 ```
 
 3. Start the development server:
 ```bash
-npm start
+yarn start
 ```
 
 The app will be available at `http://localhost:3000`.
@@ -56,7 +56,7 @@ The app will be available at `http://localhost:3000`.
 
 To create a production build:
 ```bash
-npm run build
+yarn build
 ```
 
 ## Contributing
