@@ -455,6 +455,60 @@ function SwapInterface() {
     console.log('Current balance:', balance);
   }, [balance]);
 
+  // Function to find token by ID or symbol
+  const findToken = useCallback((idOrSymbol, tokenList) => {
+    if (!idOrSymbol || !tokenList?.length) return null;
+    const searchTerm = idOrSymbol.toLowerCase();
+    return tokenList.find(token => 
+      token.id.toLowerCase() === searchTerm || 
+      token.symbol.toLowerCase() === searchTerm
+    );
+  }, []);
+
+  // Handle URL parameters for token pre-selection
+  useEffect(() => {
+    const handleUrlParams = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const srcParam = urlParams.get('src');
+      const dstParam = urlParams.get('dst');
+
+      if (!tokens.length) return;
+
+      if (srcParam) {
+        const sourceToken = findToken(srcParam, tokens);
+        if (sourceToken) {
+          setFromToken(sourceToken);
+        }
+      }
+
+      if (dstParam) {
+        const destToken = findToken(dstParam, tokens);
+        if (destToken) {
+          setToToken(destToken);
+        }
+      }
+    };
+
+    handleUrlParams();
+  }, [tokens, findToken]);
+
+  // Update URL when tokens change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (fromToken) {
+      params.set('src', fromToken.symbol.toLowerCase());
+    }
+    if (toToken) {
+      params.set('dst', toToken.symbol.toLowerCase());
+    }
+    
+    const newUrl = params.toString() 
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+      
+    window.history.replaceState({}, '', newUrl);
+  }, [fromToken, toToken]);
+
   return (
     <div className="App">
       <div className="wallet-header">
