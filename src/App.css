@@ -609,3 +609,10 @@
   color: #0052a3;
   text-decoration: underline;
 }
+
+.loading-message {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 14px;
+}

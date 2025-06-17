@@ -2,14 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useBalance, useWallet } from '@alephium/web3-react';
 import './TokenSelector.css';
 
-function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, excludeToken = null }) {
+function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, excludeToken = null, tokens = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef(null);
   const selectorRef = useRef(null);
   const { connectionStatus } = useWallet();
   const { balance } = useBalance();
-  const [tokens, setTokens] = useState([]);
 
   // Debug logging for balance
   useEffect(() => {
@@ -17,8 +16,8 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
     console.log('Connection Status:', connectionStatus);
     console.log('Balance:', balance);
     if (balance) {
-      console.log('ALPH Balance:', balance.alphs);
-      console.log('Token Balances:', balance.tokens);
+      console.log('ALPH Balance:', balance.balance);
+      console.log('Token Balances:', balance.tokenBalances);
     }
     console.log('Selected Token:', selectedToken);
     console.log('================================');
@@ -94,30 +93,6 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
     const tokenBalance = getTokenBalance(token.symbol === 'ALPH' ? 'ALPH' : token.id);
     return parseFloat(tokenBalance) > 0;
   };
-
-  // Fetch tokens
-  useEffect(() => {
-    const fetchTokens = async () => {
-      try {
-        const response = await fetch('https://api.linxlabs.org/v1/tokens', {
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch tokens');
-        }
-
-        const data = await response.json();
-        setTokens(data);
-      } catch (err) {
-        console.error('Error fetching tokens:', err);
-      }
-    };
-
-    fetchTokens();
-  }, []);
 
   const filteredTokens = tokens
     .filter(token => {

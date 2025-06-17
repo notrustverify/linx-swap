@@ -22,6 +22,7 @@ function SwapInterface() {
   const [isBalanceRefreshing, setIsBalanceRefreshing] = useState(false);
   const [nextUpdateIn, setNextUpdateIn] = useState(30);
   const [tokens, setTokens] = useState([]);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(true);
   const [txStatus, setTxStatus] = useState(null);
   const [pendingTxId, setPendingTxId] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -207,9 +208,20 @@ function SwapInterface() {
     };
   }, [fromToken, toToken, amount, fetchQuote, isValidating, txStatus]);
 
-  // Fetch tokens on mount
+  // Function to find token by ID or symbol
+  const findToken = useCallback((idOrSymbol, tokenList) => {
+    if (!idOrSymbol || !tokenList?.length) return null;
+    const searchTerm = idOrSymbol.toLowerCase();
+    return tokenList.find(token => 
+      token.id.toLowerCase() === searchTerm || 
+      token.symbol.toLowerCase() === searchTerm
+    );
+  }, []);
+
+  // Fetch tokens and handle URL parameters
   useEffect(() => {
-    const fetchTokens = async () => {
+    const fetchTokensAndHandleParams = async () => {
+      setIsLoadingTokens(true);
       try {
         const response = await fetch('https://api.linxlabs.org/v1/tokens', {
           headers: {
@@ -223,13 +235,54 @@ function SwapInterface() {
 
         const data = await response.json();
         setTokens(data);
+
+        // Handle URL parameters after tokens are loaded
+        const urlParams = new URLSearchParams(window.location.search);
+        const srcParam = urlParams.get('src');
+        const dstParam = urlParams.get('dst');
+
+        if (srcParam) {
+          const sourceToken = findToken(srcParam, data);
+          if (sourceToken) {
+            setFromToken(sourceToken);
+          }
+        }
+
+        if (dstParam) {
+          const destToken = findToken(dstParam, data);
+          if (destToken) {
+            setToToken(destToken);
+          }
+        }
       } catch (err) {
         console.error('Error fetching tokens:', err);
+        setError('Failed to load tokens. Please refresh the page.');
+      } finally {
+        setIsLoadingTokens(false);
       }
     };
 
-    fetchTokens();
-  }, []);
+    fetchTokensAndHandleParams();
+  }, []); // Only run once on mount
+
+  // Update URL when tokens change
+  useEffect(() => {
+    if (isLoadingTokens) return; // Don't update URL while tokens are loading
+
+    const params = new URLSearchParams();
+    if (fromToken) {
+      params.set('src', fromToken.symbol.toLowerCase());
+    }
+    if (toToken) {
+      params.set('dst', toToken.symbol.toLowerCase());
+    }
+    
+    const newUrl = params.toString() 
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+      
+    window.history.replaceState({}, '', newUrl);
+  }, [fromToken, toToken, isLoadingTokens]);
 
   // Check transaction status
   const checkTxStatus = async (txId) => {
@@ -437,60 +490,6 @@ function SwapInterface() {
     console.log('Balance updated:', balance);
   }, [balance]);
 
-  // Function to find token by ID or symbol
-  const findToken = useCallback((idOrSymbol, tokenList) => {
-    if (!idOrSymbol || !tokenList?.length) return null;
-    const searchTerm = idOrSymbol.toLowerCase();
-    return tokenList.find(token => 
-      token.id.toLowerCase() === searchTerm || 
-      token.symbol.toLowerCase() === searchTerm
-    );
-  }, []);
-
-  // Handle URL parameters for token pre-selection
-  useEffect(() => {
-    const handleUrlParams = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const srcParam = urlParams.get('src');
-      const dstParam = urlParams.get('dst');
-
-      if (!tokens.length) return;
-
-      if (srcParam) {
-        const sourceToken = findToken(srcParam, tokens);
-        if (sourceToken) {
-          setFromToken(sourceToken);
-        }
-      }
-
-      if (dstParam) {
-        const destToken = findToken(dstParam, tokens);
-        if (destToken) {
-          setToToken(destToken);
-        }
-      }
-    };
-
-    handleUrlParams();
-  }, [tokens, findToken]);
-
-  // Update URL when tokens change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (fromToken) {
-      params.set('src', fromToken.symbol.toLowerCase());
-    }
-    if (toToken) {
-      params.set('dst', toToken.symbol.toLowerCase());
-    }
-    
-    const newUrl = params.toString() 
-      ? `${window.location.pathname}?${params.toString()}`
-      : window.location.pathname;
-      
-    window.history.replaceState({}, '', newUrl);
-  }, [fromToken, toToken]);
-
   // Effect for countdown timer
   useEffect(() => {
     let timerId;
@@ -562,64 +561,72 @@ function SwapInterface() {
         </div>
 
         <div className="swap-box">
-          <div className="swap-input">
-            <div className="swap-input-header">You pay</div>
-            <div className="swap-input-row">
-              <AmountInput
-                value={amount}
-                onChange={handleAmountChange}
-                disabled={!fromToken || connectionStatus !== 'connected'}
-                maxAmount={fromToken && balance ? (
-                  fromToken.symbol === 'ALPH' 
-                    ? parseFloat(balance?.balance || 0) / Math.pow(10, 18)
-                    : parseFloat(balance?.tokens?.find(t => t.id === fromToken.id)?.amount || 0) / Math.pow(10, fromToken.decimals)
-                ) : undefined}
-              />
-              <TokenSelector
-                selectedToken={fromToken}
-                onSelect={handleFromTokenSelect}
-                showOnlyWithBalance={true}
-                excludeToken={toToken}
-              />
-            </div>
-            {fromToken && (
-              <div className="network-info">
-                on {fromToken.network || 'Alephium'}
+          {isLoadingTokens ? (
+            <div className="loading-message">Loading tokens...</div>
+          ) : (
+            <>
+              <div className="swap-input">
+                <div className="swap-input-header">You pay</div>
+                <div className="swap-input-row">
+                  <AmountInput
+                    value={amount}
+                    onChange={handleAmountChange}
+                    disabled={!fromToken || connectionStatus !== 'connected'}
+                    maxAmount={fromToken && balance ? (
+                      fromToken.symbol === 'ALPH' 
+                        ? parseFloat(balance?.balance || 0) / Math.pow(10, 18)
+                        : parseFloat(balance?.tokenBalances?.find(t => t.id === fromToken.id)?.amount || 0) / Math.pow(10, fromToken.decimals)
+                    ) : undefined}
+                  />
+                  <TokenSelector
+                    selectedToken={fromToken}
+                    onSelect={handleFromTokenSelect}
+                    showOnlyWithBalance={true}
+                    excludeToken={toToken}
+                    tokens={tokens}
+                  />
+                </div>
+                {fromToken && (
+                  <div className="network-info">
+                    on {fromToken.network || 'Alephium'}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          
-          <div className="swap-arrow-container">
-            <button 
-              className="swap-arrow" 
-              onClick={switchTokens}
-              disabled={!fromToken || !toToken || connectionStatus !== 'connected'}
-            >
-              ↓
-            </button>
-          </div>
-          
-          <div className="swap-input">
-            <div className="swap-input-header">You receive</div>
-            <div className="swap-input-row">
-              <AmountInput
-                value={quote ? formatAmount(quote.quote.totalOutput, toToken?.decimals || 18) : ''}
-                onChange={() => {}}
-                disabled={true}
-              />
-              <TokenSelector
-                selectedToken={toToken}
-                onSelect={handleToTokenSelect}
-                showOnlyWithBalance={false}
-                excludeToken={fromToken}
-              />
-            </div>
-            {toToken && quote && (
-              <div className="network-info">
-                on {toToken.network || 'Alephium'}
+              
+              <div className="swap-arrow-container">
+                <button 
+                  className="swap-arrow" 
+                  onClick={switchTokens}
+                  disabled={!fromToken || !toToken || connectionStatus !== 'connected'}
+                >
+                  ↓
+                </button>
               </div>
-            )}
-          </div>
+              
+              <div className="swap-input">
+                <div className="swap-input-header">You receive</div>
+                <div className="swap-input-row">
+                  <AmountInput
+                    value={quote ? formatAmount(quote.quote.totalOutput, toToken?.decimals || 18) : ''}
+                    onChange={() => {}}
+                    disabled={true}
+                  />
+                  <TokenSelector
+                    selectedToken={toToken}
+                    onSelect={handleToTokenSelect}
+                    showOnlyWithBalance={false}
+                    excludeToken={fromToken}
+                    tokens={tokens}
+                  />
+                </div>
+                {toToken && quote && (
+                  <div className="network-info">
+                    on {toToken.network || 'Alephium'}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {error && (
             <div className="error-message">
