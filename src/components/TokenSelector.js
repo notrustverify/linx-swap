@@ -129,7 +129,7 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
       const currentBalance = getTokenBalance(selectedToken.symbol === 'ALPH' ? 'ALPH' : selectedToken.id);
       console.log(`Balance updated for ${selectedToken.symbol}:`, currentBalance);
     }
-  }, [balance, selectedToken]);
+  }, [balance, selectedToken, getTokenBalance]);
 
   const handleTokenSelect = (token) => {
     onSelect(token);
