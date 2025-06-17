@@ -30,19 +30,8 @@ function SwapInterface() {
 
   // Debug logging for balance and connection status
   useEffect(() => {
-    console.log('=== Balance Debug ===');
-    console.log('Connection Status:', connectionStatus);
-    console.log('Account:', account);
-    console.log('Balance:', balance);
-    if (balance) {
-      console.log('ALPH Balance:', balance.balance);
-      console.log('Token Balances:', balance.tokenBalances);
-    }
-    console.log('==================');
-
     // Force UI update when wallet connects
     if (connectionStatus === 'connected' && account) {
-      console.log('Wallet connected, updating UI...');
       handleRefreshBalance();
     }
   }, [connectionStatus, account, balance]);
@@ -62,18 +51,12 @@ function SwapInterface() {
 
   // Log wallet connection status changes
   useEffect(() => {
-    console.log('Wallet connection status:', connectionStatus);
     if (connectionStatus === 'connected' && account) {
-      console.log('=== Wallet Connected ===');
-      console.log('Address:', account.address);
-      console.log('Public Key:', account.publicKey);
-      console.log('Group:', account.group);
-      console.log('Network:', nodeProvider?.network);
-      console.log('=====================');
+      // Wallet connected, no need to log details
     } else if (connectionStatus === 'disconnected') {
-      console.log('Wallet disconnected');
+      // Wallet disconnected
     } else if (connectionStatus === 'connecting') {
-      console.log('Connecting to wallet...');
+      // Connecting to wallet
     }
   }, [connectionStatus, account, nodeProvider]);
 
@@ -288,7 +271,6 @@ function SwapInterface() {
   const checkTxStatus = async (txId) => {
     try {
       const response = await nodeProvider.transactions.getTransactionsStatus({ txId });
-      console.log('Transaction status:', response);
       return response;
     } catch (error) {
       console.error('Error checking transaction status:', error);
@@ -345,7 +327,6 @@ function SwapInterface() {
       
       while (attempts < maxAttempts) {
         const status = await checkTxStatus(txId);
-        console.log('Checking status:', status);
         
         if (!status) {
           setTxStatus('Checking transaction status...');
@@ -403,8 +384,6 @@ function SwapInterface() {
         signerAddress: signerAddress,
         unsignedTx: quote.transaction.unsignedTx
       });
-
-      console.log('transaction id', txResult.txId);
       
       if (txResult?.txId) {
         setTxStatus('Transaction submitted...');

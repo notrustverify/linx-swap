@@ -12,15 +12,7 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
 
   // Debug logging for balance
   useEffect(() => {
-    console.log('=== TokenSelector Balance Debug ===');
-    console.log('Connection Status:', connectionStatus);
-    console.log('Balance:', balance);
-    if (balance) {
-      console.log('ALPH Balance:', balance.balance);
-      console.log('Token Balances:', balance.tokenBalances);
-    }
-    console.log('Selected Token:', selectedToken);
-    console.log('================================');
+    // No need for debug logging
   }, [connectionStatus, balance, selectedToken]);
 
   // Handle click outside
@@ -51,7 +43,6 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
   // Get token balance
   const getTokenBalance = (tokenId) => {
     if (!balance || connectionStatus !== 'connected') {
-      console.log('No balance or not connected, returning 0');
       return '0';
     }
     
@@ -59,10 +50,8 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
       // Handle ALPH token
       if (tokenId === 'ALPH') {
         const alphBalance = balance?.balance;
-        console.log('ALPH balance:', alphBalance);
         if (alphBalance) {
           const formatted = (parseFloat(alphBalance) / Math.pow(10, 18)).toFixed(4);
-          console.log('Formatted ALPH balance:', formatted);
           return formatted;
         }
         return '0';
@@ -70,14 +59,11 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
       
       // Handle other tokens
       const tokenBalances = balance?.tokenBalances || [];
-      console.log('Token balances:', tokenBalances);
       const tokenData = tokenBalances.find(t => t.id === tokenId);
-      console.log('Token data for', tokenId, ':', tokenData);
       if (tokenData) {
         const token = tokens.find(t => t.id === tokenId);
         const decimals = token?.decimals || 18;
         const formatted = (parseFloat(tokenData.amount) / Math.pow(10, decimals)).toFixed(4);
-        console.log('Formatted token balance:', formatted);
         return formatted;
       }
       return '0';
