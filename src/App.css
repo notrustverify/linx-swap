@@ -65,7 +65,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 .swap-header h1 {
@@ -623,4 +623,20 @@
 
 .price-impact.high-impact {
   color: #f44336;  /* Red for high impact */
+}
+
+.max-button {
+  background: transparent;
+  border: 1px solid #666;
+  color: #666;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.max-button:hover {
+  background: #666;
+  color: white;
 }

@@ -15,6 +15,7 @@ function SwapInterface() {
   const [fromToken, setFromToken] = useState(null);
   const [toToken, setToToken] = useState(null);
   const [amount, setAmount] = useState('');
+  const [rawAmount, setRawAmount] = useState('');
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -116,12 +117,11 @@ function SwapInterface() {
     setError(null);
 
     try {
-      const amountInSmallestUnit = (parseFloat(amount) * Math.pow(10, fromToken.decimals));
       const senderInfo = getSenderInfo();
       const requestBody = {
         tokenIn: fromToken.id,
         tokenOut: toToken.id,
-        amountIn: amountInSmallestUnit,
+        amountIn: rawAmount,
         slippage: 100,
         senderAddress: senderInfo.address,
         senderPublicKey: senderInfo.publicKey,
@@ -151,7 +151,7 @@ function SwapInterface() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [fromToken, toToken, amount, account, signer, balance]);
+  }, [fromToken, toToken, amount, rawAmount, account, signer, balance]);
 
   // Manual refresh
   const handleRefresh = () => {
@@ -377,6 +377,7 @@ function SwapInterface() {
           handleRefreshBalance();
           // Clear input state
           setAmount('');
+          setRawAmount('');
           setQuote(null);
           return true;
         }
@@ -431,6 +432,7 @@ function SwapInterface() {
     setToToken(fromToken);
     setQuote(null);
     setAmount('');
+    setRawAmount('');
   };
 
   const formatAmount = (value, decimals) => {
@@ -472,10 +474,14 @@ function SwapInterface() {
     return dex.charAt(0).toUpperCase() + dex.slice(1).toLowerCase();
   };
 
-  const handleAmountChange = (newAmount) => {
-    setAmount(newAmount);
-    setCompletedTx(null);
-    setTxStatus(null);
+  const handleAmountChange = (value) => {
+    setAmount(value);
+    if (fromToken && value) {
+      const raw = (parseFloat(value) * Math.pow(10, fromToken.decimals)).toLocaleString('fullwide', { useGrouping: false });
+      setRawAmount(raw);
+    } else {
+      setRawAmount('');
+    }
   };
 
   const handleFromTokenSelect = (token) => {
@@ -549,6 +555,17 @@ function SwapInterface() {
   return Math.abs(priceImpact).toFixed(2);
   };
 
+  const handleMaxAmount = () => {
+    if (!fromToken || fromToken.id === "0000000000000000000000000000000000000000000000000000000000000000" || !balance) return;
+    
+    const tokenBalance = balance.tokenBalances?.find(t => t.id === fromToken.id);
+    if (tokenBalance) {
+      const displayAmount = (parseFloat(tokenBalance.amount) / Math.pow(10, fromToken.decimals)).toLocaleString('fullwide', { useGrouping: false });
+      setAmount(displayAmount);
+      setRawAmount(tokenBalance.amount);
+    }
+  };
+
   return (
     <div className="App">
       <div className="wallet-header">
@@ -595,32 +612,26 @@ function SwapInterface() {
             <div className="loading-message">Loading tokens...</div>
           ) : (
             <>
-              <div className="swap-input">
-                <div className="swap-input-header">You pay</div>
-                <div className="swap-input-row">
+              <div className="swap-section">
+                <div className="swap-header">
+                  <span>You pay</span>
+                  {fromToken && fromToken.id !== "0000000000000000000000000000000000000000000000000000000000000000" && balance?.tokenBalances?.some(t => t.id === fromToken.id) && (
+                    <button className="max-button" onClick={handleMaxAmount}>MAX</button>
+                  )}
+                </div>
+                <div className="token-input-container">
                   <AmountInput
                     value={amount}
                     onChange={handleAmountChange}
-                    disabled={!fromToken || connectionStatus !== 'connected'}
-                    maxAmount={fromToken && balance ? (
-                      fromToken.symbol === 'ALPH' 
-                        ? parseFloat(balance?.balance || 0) / Math.pow(10, 18)
-                        : parseFloat(balance?.tokenBalances?.find(t => t.id === fromToken.id)?.amount || 0) / Math.pow(10, fromToken.decimals)
-                    ) : undefined}
+                    disabled={!fromToken || !toToken}
                   />
                   <TokenSelector
                     selectedToken={fromToken}
                     onSelect={handleFromTokenSelect}
-                    showOnlyWithBalance={true}
-                    excludeToken={toToken}
                     tokens={tokens}
                   />
                 </div>
-                {fromToken && (
-                  <div className="network-info">
-                    on {fromToken.network || 'Alephium'}
-                  </div>
-                )}
+                <div className="network-label">on Alephium</div>
               </div>
               
               <div className="swap-arrow-container">
