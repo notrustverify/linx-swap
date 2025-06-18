@@ -659,6 +659,11 @@ function SwapInterface() {
                 <span>1 {fromToken.symbol} = {calculateRate()} {toToken.symbol}</span>
               </div>
 
+              <div className="quote-row">
+                <span>Max slippage</span>
+                <span>1%</span>
+              </div>
+
               {quote.quote.allocations.length > 0 && (
                 <div className="quote-row">
                   <span>DEX</span>
