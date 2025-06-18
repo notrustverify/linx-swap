@@ -116,9 +116,8 @@ function SwapInterface() {
     setError(null);
 
     try {
-      const amountInSmallestUnit = (parseFloat(amount) * Math.pow(10, fromToken.decimals)).toString();
+      const amountInSmallestUnit = (parseFloat(amount) * Math.pow(10, fromToken.decimals));
       const senderInfo = getSenderInfo();
-
       const requestBody = {
         tokenIn: fromToken.id,
         tokenOut: toToken.id,
@@ -525,6 +524,31 @@ function SwapInterface() {
     };
   }, [fromToken, toToken, amount, quote, isValidating, txStatus]);
 
+  const calculatePriceImpact = (quote) => {
+    if (!quote?.quote?.allocations?.[0]) return null;
+
+  const allocation = quote.quote.allocations[0];
+  const pool = allocation.route[0];
+
+  // Convert reserves to numbers using token decimals
+  const reserveA = parseFloat(pool.reserveA) / Math.pow(10, fromToken.decimals);
+  const reserveB = parseFloat(pool.reserveB) / Math.pow(10, toToken.decimals);
+
+  // Parse input amount (Token A) and output amount (Token B)
+  const amountIn = parseFloat(amount);
+  const amountOut = parseFloat(quote.quote.totalOutput) / Math.pow(10, toToken.decimals);
+
+  // Market price before trade
+  const marketPrice = reserveA / reserveB;
+
+  // Effective price paid
+  const effectivePrice = amountIn / amountOut;
+
+  // Price impact
+  const priceImpact = ((effectivePrice - marketPrice) / marketPrice) * 100;
+  return Math.abs(priceImpact).toFixed(2);
+  };
+
   return (
     <div className="App">
       <div className="wallet-header">
@@ -692,8 +716,8 @@ function SwapInterface() {
                   <span>
                     <a
                       href={getDexLink(quote.quote.allocations[0].route[0].dex)}
-          target="_blank"
-          rel="noopener noreferrer"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="dex-link"
                     >
                       {formatDexName(quote.quote.allocations[0].route[0].dex)} ↗

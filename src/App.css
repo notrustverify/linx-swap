@@ -616,3 +616,11 @@
   color: #666;
   font-size: 14px;
 }
+
+.price-impact {
+  color: #4caf50;  /* Green for normal impact */
+}
+
+.price-impact.high-impact {
+  color: #f44336;  /* Red for high impact */
+}
