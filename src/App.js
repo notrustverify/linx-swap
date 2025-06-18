@@ -32,6 +32,7 @@ function SwapInterface() {
   const [slippage, setSlippage] = useState(1); // 1% default
   const [showSettings, setShowSettings] = useState(false);
   const tokensLoaded = useRef(false);
+  const [isRefreshSpinning, setIsRefreshSpinning] = useState(false);
 
   // Debug logging for balance and connection status
   useEffect(() => {
@@ -198,6 +199,8 @@ function SwapInterface() {
 
   const handleRefresh = () => {
     if (!isRefreshing && !isValidating) {
+      setIsRefreshSpinning(true);
+      setTimeout(() => setIsRefreshSpinning(false), 1000);
       fetchQuote(false);
       setNextUpdateIn(30);
     }
@@ -545,7 +548,7 @@ function SwapInterface() {
               </div>
             )}
             <button className="icon-button" onClick={() => handleRefresh()}>
-              <span className="refresh-icon">↻</span>
+              <span className={`refresh-icon ${isRefreshSpinning ? 'spinning' : ''}`}>↻</span>
             </button>
             <button className="icon-button" onClick={() => setShowSettings(true)}>
               <FontAwesomeIcon icon={faSliders} />
