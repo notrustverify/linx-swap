@@ -175,7 +175,7 @@ function SwapInterface() {
         } else {
           setQuote(null); // Clear quote if inputs are invalid
         }
-      }, 300);
+      }, 250);
     };
 
     return () => {
