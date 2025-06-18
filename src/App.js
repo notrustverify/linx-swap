@@ -4,6 +4,8 @@ import { NodeProvider } from '@alephium/web3';
 import TokenSelector from './components/TokenSelector';
 import AmountInput from './components/AmountInput';
 import { useBalance } from '@alephium/web3-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faSliders } from '@fortawesome/free-solid-svg-icons';
 import './App.css';
 
 // Initialize global node provider
@@ -20,13 +22,15 @@ function SwapInterface() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [nextUpdateIn, setNextUpdateIn] = useState(30);
+  const [nextUpdateIn, setNextUpdateIn] = useState(20);
   const [tokens, setTokens] = useState([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(true);
   const [txStatus, setTxStatus] = useState(null);
   const [pendingTxId, setPendingTxId] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [completedTx, setCompletedTx] = useState(null);
+  const [slippage, setSlippage] = useState(1); // 1% default
+  const [showSettings, setShowSettings] = useState(false);
   const tokensLoaded = useRef(false);
 
   // Debug logging for balance and connection status
@@ -74,7 +78,7 @@ function SwapInterface() {
 
   const fetchQuote = useCallback(async (isAutoRefresh = false) => {
     // Don't fetch quote if transaction is being validated
-    if (isValidating || txStatus) {
+    if (isValidating || txStatus || isRefreshing) {
       return;
     }
 
@@ -92,12 +96,6 @@ function SwapInterface() {
       userBalance = tokenBalance ? parseFloat(tokenBalance.amount) / Math.pow(10, fromToken.decimals) : 0;
     }
 
-    if (parseFloat(amount) > userBalance) {
-      setError(`Insufficient ${fromToken.symbol} balance`);
-      setQuote(null);
-      return;
-    }
-
     if (!isAutoRefresh) {
       setLoading(true);
     } else {
@@ -111,12 +109,11 @@ function SwapInterface() {
         tokenIn: fromToken.id,
         tokenOut: toToken.id,
         amountIn: rawAmount,
-        slippage: 100,
+        slippage: slippage*100,
         senderAddress: senderInfo.address,
         senderPublicKey: senderInfo.publicKey,
         recipient: senderInfo.recipient
       };
-
       const response = await fetch('https://api.linxlabs.org/v1/quote', {
         method: 'POST',
         headers: {
@@ -125,7 +122,7 @@ function SwapInterface() {
         },
         body: JSON.stringify(requestBody),
       });
-
+      console.log(response);
       const responseData = await response.json();
 
       if (!response.ok || !responseData.success) {
@@ -140,7 +137,7 @@ function SwapInterface() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [fromToken, toToken, amount, rawAmount, account, signer, balance]);
+  }, [fromToken, toToken, amount, rawAmount, account, signer, balance, slippage, isValidating, txStatus, isRefreshing]);
 
   // Auto-refresh effect
   useEffect(() => {
@@ -155,67 +152,56 @@ function SwapInterface() {
     return () => clearInterval(interval);
   }, [pendingTxId, fetchQuote, isRefreshing, isValidating]);
 
-  // Manual refresh
+  // Single effect for quote updates
+  useEffect(() => {
+    let isSubscribed = true;
+    let timeoutId = null;
+
+    const updateQuote = async () => {
+      if (!fromToken || !toToken || !amount || parseFloat(amount) <= 0 || isValidating) {
+        setQuote(null);
+        setNextUpdateIn(30);
+        return;
+      }
+
+      if (isSubscribed) {
+        await fetchQuote(false);
+        setNextUpdateIn(30);
+      }
+    };
+
+    // Initial update
+    updateQuote();
+
+    // Timer for countdown display
+    const interval = setInterval(() => {
+      if (!isSubscribed) return;
+      
+      setNextUpdateIn(prev => {
+        const next = prev - 1;
+        if (next <= 0) {
+          // Schedule the next update
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(updateQuote, 0);
+          return 30;
+        }
+        return next;
+      });
+    }, 1000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [fromToken?.id, toToken?.id, amount, isValidating, fetchQuote, slippage]);
+
   const handleRefresh = () => {
     if (!isRefreshing && !isValidating) {
-      fetchQuote(true);
+      fetchQuote(false);
+      setNextUpdateIn(30);
     }
   };
-
-  // Initial quote fetch when inputs change
-  const debouncedFetchQuoteRef = useRef();
-  const timeoutRef = useRef();
-
-  useEffect(() => {
-    debouncedFetchQuoteRef.current = (isAutoRefresh) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      timeoutRef.current = setTimeout(() => {
-        // Only fetch if we have both tokens and a valid amount
-        if (fromToken && toToken && parseFloat(amount) > 0) {
-          fetchQuote(isAutoRefresh);
-        } else {
-          setQuote(null); // Clear quote if inputs are invalid
-        }
-      }, 250);
-    };
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [fetchQuote, fromToken, toToken, amount]);
-
-  // Effect for input changes
-  useEffect(() => {
-    if (debouncedFetchQuoteRef.current) {
-      debouncedFetchQuoteRef.current(false);
-    }
-  }, [fromToken?.id, toToken?.id, amount]);
-
-  // Auto-refresh effect
-  useEffect(() => {
-    let intervalId;
-    
-    // Don't set up auto-refresh if transaction is being validated
-    if (isValidating || txStatus) {
-      return;
-    }
-    
-    if (fromToken && toToken && amount && parseFloat(amount) > 0) {
-      intervalId = setInterval(() => {
-        fetchQuote(true);
-      }, 30000); // 30 seconds
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [fromToken, toToken, amount, fetchQuote, isValidating, txStatus]);
 
   // Function to find token by ID or symbol
   const findToken = useCallback((idOrSymbol, tokenList) => {
@@ -376,9 +362,7 @@ function SwapInterface() {
           setCompletedTx(txId);
           setPendingTxId(null);
           setIsValidating(false);
-          // Clear input state
-          setAmount('');
-          setRawAmount('');
+          // Only clear quote
           setQuote(null);
           return true;
         }
@@ -502,35 +486,6 @@ function SwapInterface() {
     console.log('Balance updated:', balance);
   }, [balance]);
 
-  // Effect for countdown timer
-  useEffect(() => {
-    let timerId;
-    
-    // Don't start countdown if transaction is being validated
-    if (isValidating || txStatus) {
-      return;
-    }
-    
-    if (fromToken && toToken && amount && parseFloat(amount) > 0) {
-      setNextUpdateIn(30);
-      
-      timerId = setInterval(() => {
-        setNextUpdateIn(prev => {
-          if (prev <= 1) {
-            return 30; // Reset to 30 when it reaches 0
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timerId) {
-        clearInterval(timerId);
-      }
-    };
-  }, [fromToken, toToken, amount, quote, isValidating, txStatus]);
-
   const calculatePriceImpact = (quote) => {
     if (!quote?.quote?.allocations?.[0]) return null;
 
@@ -556,7 +511,7 @@ function SwapInterface() {
   return Math.abs(priceImpact).toFixed(2);
   };
 
-  const handleMaxAmount = () => {
+  const handleMaxAmount = async () => {
     if (!fromToken || fromToken.id === "0000000000000000000000000000000000000000000000000000000000000000" || !balance) return;
     
     const tokenBalance = balance.tokenBalances?.find(t => t.id === fromToken.id);
@@ -565,6 +520,10 @@ function SwapInterface() {
       setAmount(displayAmount);
       setRawAmount(tokenBalance.amount);
     }
+  };
+
+  const handleSlippageChange = (value) => {
+    setSlippage(value);
   };
 
   return (
@@ -580,21 +539,61 @@ function SwapInterface() {
         <div className="swap-header">
           <h1>Swap</h1>
           <div className="swap-actions">
-            {connectionStatus === 'connecting' && <span>Connecting...</span>}
             {quote && (
               <div className="update-timer">
                 Updates in {nextUpdateIn}s
               </div>
             )}
-            <button 
-              className={`action-button ${isRefreshing ? 'refreshing' : ''}`}
-              onClick={handleRefresh}
-              disabled={loading || isRefreshing || !quote}
-            >
-              ↻
+            <button className="icon-button" onClick={() => handleRefresh()}>
+              <span className="refresh-icon">↻</span>
+            </button>
+            <button className="icon-button" onClick={() => setShowSettings(true)}>
+              <FontAwesomeIcon icon={faSliders} />
             </button>
           </div>
         </div>
+
+        {showSettings && (
+          <div className="settings-modal">
+            <div className="settings-content">
+              <div className="settings-header">
+                <button className="back-button" onClick={() => setShowSettings(false)}>←</button>
+                <h2>Swap settings</h2>
+              </div>
+              
+              <div className="settings-section">
+                <h3>Slippage tolerance</h3>
+                <div className="slippage-options">
+                  <button 
+                    className={`slippage-button ${slippage === 0.1 ? 'active' : ''}`}
+                    onClick={() => handleSlippageChange(0.1)}
+                  >
+                    0.1%
+                  </button>
+                  <button 
+                    className={`slippage-button ${slippage === 0.5 ? 'active' : ''}`}
+                    onClick={() => handleSlippageChange(0.5)}
+                  >
+                    0.5%
+                  </button>
+                  <button 
+                    className={`slippage-button ${slippage === 1 ? 'active' : ''}`}
+                    onClick={() => handleSlippageChange(1)}
+                  >
+                    1%
+                  </button>
+                </div>
+              </div>
+
+              {quote && (
+                <div className="quote-row">
+                  <span>Max slippage</span>
+                  <span>{slippage}%</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="swap-box">
           {isLoadingTokens ? (
@@ -617,7 +616,12 @@ function SwapInterface() {
                   <TokenSelector
                     selectedToken={fromToken}
                     onSelect={handleFromTokenSelect}
-                    tokens={tokens}
+                    tokens={tokens.filter(token => {
+                      if (token.id === "0000000000000000000000000000000000000000000000000000000000000000") {
+                        return parseFloat(balance?.balance || 0) > 0;
+                      }
+                      return balance?.tokenBalances?.some(tb => tb.id === token.id && parseFloat(tb.amount) > 0);
+                    })}
                   />
                 </div>
                 <div className="network-label">on Alephium</div>
@@ -644,9 +648,11 @@ function SwapInterface() {
                   <TokenSelector
                     selectedToken={toToken}
                     onSelect={handleToTokenSelect}
-                    showOnlyWithBalance={false}
-                    excludeToken={fromToken}
-                    tokens={tokens}
+                    tokens={tokens.filter(token => {
+                      // For the "to" token selector, we don't need to check balance
+                      // Just exclude the "from" token
+                      return token.id !== fromToken?.id;
+                    })}
                   />
                 </div>
                 {toToken && quote && (
@@ -707,7 +713,7 @@ function SwapInterface() {
 
               <div className="quote-row">
                 <span>Max slippage</span>
-                <span>1%</span>
+                <span>{slippage}%</span>
               </div>
 
               {quote.quote.allocations.length > 0 && (
@@ -771,4 +777,7 @@ function App() {
 }
 
 export default App;
+
+
+
 
