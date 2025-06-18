@@ -20,7 +20,6 @@ function SwapInterface() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isBalanceRefreshing, setIsBalanceRefreshing] = useState(false);
   const [nextUpdateIn, setNextUpdateIn] = useState(30);
   const [tokens, setTokens] = useState([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(true);
@@ -32,24 +31,14 @@ function SwapInterface() {
 
   // Debug logging for balance and connection status
   useEffect(() => {
-    // Force UI update when wallet connects
-    if (connectionStatus === 'connected' && account) {
-      handleRefreshBalance();
+    if (balance) {
+      console.log('Balance:', balance);
     }
-  }, [connectionStatus, account, balance]);
+    if (connectionStatus) {
+      console.log('Connection status:', connectionStatus);
+    }
+  }, [balance, connectionStatus]);
 
-  // Handle balance refresh
-  const handleRefreshBalance = () => {
-    if (isBalanceRefreshing) return;
-    setIsBalanceRefreshing(true);
-    
-    // Force a re-render of token selectors
-    setFromToken(prev => prev ? {...prev} : null);
-    setToToken(prev => prev ? {...prev} : null);
-    
-    // Reset the refreshing state after a delay
-    setTimeout(() => setIsBalanceRefreshing(false), 1000);
-  };
 
   // Log wallet connection status changes
   useEffect(() => {
@@ -153,9 +142,24 @@ function SwapInterface() {
     }
   }, [fromToken, toToken, amount, rawAmount, account, signer, balance]);
 
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!pendingTxId) return;
+
+    const interval = setInterval(() => {
+      if (!isRefreshing && !isValidating) {
+        fetchQuote(true);
+      }
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [pendingTxId, fetchQuote, isRefreshing, isValidating]);
+
   // Manual refresh
   const handleRefresh = () => {
-    fetchQuote();
+    if (!isRefreshing && !isValidating) {
+      fetchQuote(true);
+    }
   };
 
   // Initial quote fetch when inputs change
@@ -319,8 +323,7 @@ function SwapInterface() {
           setTxStatus('Done');
           setCompletedTx(pendingTxId);
           setPendingTxId(null);
-          // Force UI update after transaction is confirmed
-          handleRefreshBalance();
+
         }
       } catch (err) {
         if (err.message && err.message.includes('404')) {
@@ -373,8 +376,6 @@ function SwapInterface() {
           setCompletedTx(txId);
           setPendingTxId(null);
           setIsValidating(false);
-          // Force UI update after confirmation
-          handleRefreshBalance();
           // Clear input state
           setAmount('');
           setRawAmount('');
@@ -443,7 +444,7 @@ function SwapInterface() {
   };
 
   const calculateRate = () => {
-    if (!quote || !amount || !fromToken || !toToken) return null;
+    if (!quote?.quote?.totalOutput) return '0';
     const amountIn = parseFloat(amount);
     const amountOut = parseFloat(quote.quote.totalOutput) / Math.pow(10, toToken.decimals);
     return (amountOut / amountIn).toFixed(6);
@@ -572,19 +573,7 @@ function SwapInterface() {
         <AlephiumConnectButton 
           displayAccount={(account) => `${account.address.slice(0, 4)}${account.address.slice(-4)}`}
         />
-        {connectionStatus === 'connected' && account && (
-          <div className="wallet-info">
-            <span>Group: {account.group}</span>
-            <button 
-              className={`refresh-balance-button ${isBalanceRefreshing ? 'refreshing' : ''}`}
-              onClick={handleRefreshBalance}
-              disabled={isBalanceRefreshing}
-              title="Refresh balance"
-            >
-              ↻
-            </button>
-          </div>
-        )}
+
       </div>
       
       <div className="swap-container">
