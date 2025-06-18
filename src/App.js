@@ -533,7 +533,7 @@ function SwapInterface() {
     <div className="App">
       <div className="wallet-header">
         <AlephiumConnectButton 
-          displayAccount={(account) => `${account.address.slice(0, 4)}${account.address.slice(-4)}`}
+          
         />
 
       </div>
