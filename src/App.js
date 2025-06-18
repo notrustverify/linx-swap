@@ -160,15 +160,37 @@ function SwapInterface() {
   };
 
   // Initial quote fetch when inputs change
-  const debouncedFetchQuote = useCallback(
-    debounce((isAutoRefresh) => fetchQuote(isAutoRefresh), 500),
-    [fetchQuote]
-  );
+  const debouncedFetchQuoteRef = useRef();
+  const timeoutRef = useRef();
+
+  useEffect(() => {
+    debouncedFetchQuoteRef.current = (isAutoRefresh) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => {
+        // Only fetch if we have both tokens and a valid amount
+        if (fromToken && toToken && parseFloat(amount) > 0) {
+          fetchQuote(isAutoRefresh);
+        } else {
+          setQuote(null); // Clear quote if inputs are invalid
+        }
+      }, 300);
+    };
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [fetchQuote, fromToken, toToken, amount]);
 
   // Effect for input changes
   useEffect(() => {
-    debouncedFetchQuote(false);
-  }, [fromToken?.id, toToken?.id, amount, debouncedFetchQuote]);
+    if (debouncedFetchQuoteRef.current) {
+      debouncedFetchQuoteRef.current(false);
+    }
+  }, [fromToken?.id, toToken?.id, amount]);
 
   // Auto-refresh effect
   useEffect(() => {
@@ -670,8 +692,8 @@ function SwapInterface() {
                   <span>
                     <a
                       href={getDexLink(quote.quote.allocations[0].route[0].dex)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+          target="_blank"
+          rel="noopener noreferrer"
                       className="dex-link"
                     >
                       {formatDexName(quote.quote.allocations[0].route[0].dex)} ↗
