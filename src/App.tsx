@@ -6,33 +6,35 @@ import AmountInput from './components/AmountInput';
 import { useBalance } from '@alephium/web3-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSliders } from '@fortawesome/free-solid-svg-icons';
+import { Token, Quote, SenderInfo, QuoteRequest, QuoteResponse, TransactionStatus } from './types';
 import './App.css';
 
 // Initialize global node provider
 const nodeProvider = new NodeProvider('https://lb-fullnode-alephium.notrustverify.ch');
 
-function SwapInterface() {
+const SwapInterface: React.FC = () => {
   const { account, connectionStatus, signer } = useWallet();
   const { balance } = useBalance();
-  const [fromToken, setFromToken] = useState(null);
-  const [toToken, setToToken] = useState(null);
-  const [amount, setAmount] = useState('');
-  const [rawAmount, setRawAmount] = useState('');
-  const [quote, setQuote] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [nextUpdateIn, setNextUpdateIn] = useState(20);
-  const [tokens, setTokens] = useState([]);
-  const [isLoadingTokens, setIsLoadingTokens] = useState(true);
-  const [txStatus, setTxStatus] = useState(null);
-  const [pendingTxId, setPendingTxId] = useState(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [completedTx, setCompletedTx] = useState(null);
-  const [slippage, setSlippage] = useState(1); // 1% default
-  const [showSettings, setShowSettings] = useState(false);
-  const tokensLoaded = useRef(false);
-  const [isRefreshSpinning, setIsRefreshSpinning] = useState(false);
+  const [fromToken, setFromToken] = useState<Token | null>(null);
+  const [toToken, setToToken] = useState<Token | null>(null);
+  const [amount, setAmount] = useState<string>('');
+  const [rawAmount, setRawAmount] = useState<string>('');
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [nextUpdateIn, setNextUpdateIn] = useState<number>(20);
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [isLoadingTokens, setIsLoadingTokens] = useState<boolean>(true);
+  const [txStatus, setTxStatus] = useState<string | null>(null);
+  const [pendingTxId, setPendingTxId] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState<boolean>(false);
+  const [completedTx, setCompletedTx] = useState<string | null>(null);
+  const [slippage, setSlippage] = useState<number>(1); // 1% default
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const tokensLoaded = useRef<boolean>(false);
+  const [isRefreshSpinning, setIsRefreshSpinning] = useState<boolean>(false);
+  const [insufficientBalance, setInsufficientBalance] = useState<boolean>(false);
 
   // Debug logging for balance and connection status
   useEffect(() => {
@@ -43,7 +45,6 @@ function SwapInterface() {
       console.log('Connection status:', connectionStatus);
     }
   }, [balance, connectionStatus]);
-
 
   // Log wallet connection status changes
   useEffect(() => {
@@ -57,7 +58,7 @@ function SwapInterface() {
   }, [connectionStatus, account, nodeProvider]);
 
   // Replace example sender with actual wallet account when connected
-  const getSenderInfo = () => {
+  const getSenderInfo = (): SenderInfo | undefined => {
     if (connectionStatus === 'connected' && account && signer) {
       return {
         address: account.address,
@@ -66,12 +67,12 @@ function SwapInterface() {
         group: account.group
       };
     }
-
+    return undefined;
   };
 
-  const debounce = (func, wait) => {
-    let timeout;
-    return (...args) => {
+  const debounce = <T extends (...args: any[]) => any>(func: T, wait: number) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: Parameters<T>) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
@@ -91,7 +92,7 @@ function SwapInterface() {
     // Check if amount exceeds balance
     let userBalance = 0;
     if (fromToken.symbol === 'ALPH') {
-      userBalance = parseFloat(balance?.balance || 0) / Math.pow(10, 18);
+      userBalance = parseFloat(balance?.balance || '0') / Math.pow(10, 18);
     } else {
       const tokenBalance = balance?.tokenBalances?.find(t => t.id === fromToken.id);
       userBalance = tokenBalance ? parseFloat(tokenBalance.amount) / Math.pow(10, fromToken.decimals) : 0;
@@ -106,15 +107,20 @@ function SwapInterface() {
 
     try {
       const senderInfo = getSenderInfo();
-      const requestBody = {
+      if (!senderInfo) {
+        throw new Error('Wallet not connected');
+      }
+
+      const requestBody: QuoteRequest = {
         tokenIn: fromToken.id,
         tokenOut: toToken.id,
         amountIn: rawAmount,
-        slippage: slippage*100,
+        slippage: slippage * 100,
         senderAddress: senderInfo.address,
         senderPublicKey: senderInfo.publicKey,
         recipient: senderInfo.recipient
       };
+
       const response = await fetch('https://api.linxlabs.org/v1/quote', {
         method: 'POST',
         headers: {
@@ -124,16 +130,24 @@ function SwapInterface() {
         body: JSON.stringify(requestBody),
       });
       console.log(response);
-      const responseData = await response.json();
+      const responseData: QuoteResponse = await response.json();
 
       if (!response.ok || !responseData.success) {
         throw new Error(responseData.message || 'Failed to get quote');
       }
 
+      console.log('Quote Debug:', {
+        rawAmount: responseData.data.quote?.allocations?.[0]?.output,
+        tokenDecimals: toToken?.decimals,
+        calculatedAmount: responseData.data.quote?.allocations?.[0]?.output ? 
+          (parseFloat(responseData.data.quote.allocations[0].output) / Math.pow(10, toToken?.decimals || 18)) : 0,
+        fullQuote: responseData.data
+      });
+
       setQuote(responseData.data);
     } catch (err) {
       console.error('Quote error:', err);
-      setError(err.message || 'Failed to get quote. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to get quote. Please try again.');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -156,7 +170,7 @@ function SwapInterface() {
   // Single effect for quote updates
   useEffect(() => {
     let isSubscribed = true;
-    let timeoutId = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     const updateQuote = async () => {
       if (!fromToken || !toToken || !amount || parseFloat(amount) <= 0 || isValidating) {
@@ -207,13 +221,13 @@ function SwapInterface() {
   };
 
   // Function to find token by ID or symbol
-  const findToken = useCallback((idOrSymbol, tokenList) => {
+  const findToken = useCallback((idOrSymbol: string, tokenList: Token[]): Token | null => {
     if (!idOrSymbol || !tokenList?.length) return null;
     const searchTerm = idOrSymbol.toLowerCase();
     return tokenList.find(token => 
       token.id.toLowerCase() === searchTerm || 
       token.symbol.toLowerCase() === searchTerm
-    );
+    ) || null;
   }, []);
 
   // Fetch tokens and handle URL parameters
@@ -235,7 +249,7 @@ function SwapInterface() {
           throw new Error('Failed to fetch tokens');
         }
 
-        const data = await response.json();
+        const data: Token[] = await response.json();
         setTokens(data);
 
         // Handle URL parameters after tokens are loaded
@@ -265,7 +279,7 @@ function SwapInterface() {
     };
 
     fetchTokensAndHandleParams();
-  }, []); // Only run once on mount
+  }, [findToken]); // Only run once on mount
 
   // Update URL when tokens change
   useEffect(() => {
@@ -287,7 +301,7 @@ function SwapInterface() {
   }, [fromToken, toToken, isLoadingTokens]);
 
   // Check transaction status
-  const checkTxStatus = async (txId) => {
+  const checkTxStatus = async (txId: string) => {
     try {
       const response = await nodeProvider.transactions.getTransactionsStatus({ txId });
       return response;
@@ -299,23 +313,22 @@ function SwapInterface() {
 
   // Monitor transaction status
   useEffect(() => {
-    let intervalId;
+    let intervalId: NodeJS.Timeout;
 
     const monitorTxStatus = async () => {
       if (!pendingTxId) return;
 
       try {
         const status = await checkTxStatus(pendingTxId);
-        setTxStatus(status.type);
+        setTxStatus(status?.type || null);
 
-        if (status.type === 'Confirmed') {
+        if (status?.type === 'Confirmed') {
           setTxStatus('Done');
           setCompletedTx(pendingTxId);
           setPendingTxId(null);
-
         }
       } catch (err) {
-        if (err.message && err.message.includes('404')) {
+        if (err instanceof Error && err.message && err.message.includes('404')) {
           setTxStatus('Loading');
         } else {
           console.error('Error checking transaction status:', err);
@@ -335,7 +348,7 @@ function SwapInterface() {
     };
   }, [pendingTxId]);
 
-  const validateTransaction = async (txId) => {
+  const validateTransaction = async (txId: string): Promise<boolean> => {
     setIsValidating(true);
     setTxStatus('Validating transaction...');
 
@@ -408,7 +421,7 @@ function SwapInterface() {
       }
     } catch (err) {
       console.error('Swap error:', err);
-      setError(err.message || 'Failed to execute swap. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to execute swap. Please try again.');
       setTxStatus(null);
     } finally {
       setLoading(false);
@@ -423,21 +436,21 @@ function SwapInterface() {
     setRawAmount('');
   };
 
-  const formatAmount = (value, decimals) => {
+  const formatAmount = (value: string, decimals: number): string => {
     if (!value) return '';
     const parsedValue = parseFloat(value);
     if (isNaN(parsedValue)) return '';
     return (parsedValue / Math.pow(10, decimals)).toFixed(6);
   };
 
-  const calculateRate = () => {
-    if (!quote?.quote?.totalOutput) return '0';
+  const calculateRate = (): string => {
+    if (!quote?.quote?.allocations?.[0]?.output || !toToken) return '0';
     const amountIn = parseFloat(amount);
-    const amountOut = parseFloat(quote.quote.totalOutput) / Math.pow(10, toToken.decimals);
+    const amountOut = parseFloat(quote.quote.allocations[0].output) / Math.pow(10, toToken.decimals);
     return (amountOut / amountIn).toFixed(6);
   };
 
-  const formatUsdValue = (value) => {
+  const formatUsdValue = (value: number): string => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -446,24 +459,47 @@ function SwapInterface() {
     }).format(value);
   };
 
-  const formatRoute = (route) => {
-    return route.map(hop => hop.dex).join(' → ');
+  const formatRoute = (route: any[]): string => {
+    return route.map((hop: any) => hop.dex).join(' → ');
   };
 
-  const getDexLink = (dex) => {
-    const dexMap = {
+  const getDexLink = (dex: string): string => {
+    const dexMap: { [key: string]: string } = {
       'elexium': 'https://elexium.finance',
       'ayin': 'https://ayin.app'
     };
     return dexMap[dex.toLowerCase()] || '#';
   };
 
-  const formatDexName = (dex) => {
+  const formatDexName = (dex: string): string => {
     return dex.charAt(0).toUpperCase() + dex.slice(1).toLowerCase();
   };
 
-  const handleAmountChange = (value) => {
+  const handleAmountChange = (value: string) => {
+    setTxStatus(null);
+    setCompletedTx(null);
     setAmount(value);
+
+    const parsedValue = parseFloat(value);
+    if (fromToken && balance && value !== '' && !isNaN(parsedValue)) {
+      let userBalance = 0;
+      if (fromToken.symbol === 'ALPH') {
+        const alphBalance = parseFloat(balance.balance || '0') / 1e18;
+        userBalance = alphBalance > 0.1 ? alphBalance - 0.1 : 0;
+      } else {
+        const tokenBalance = balance.tokenBalances?.find(t => t.id === fromToken.id);
+        userBalance = tokenBalance ? parseFloat(tokenBalance.amount) / Math.pow(10, fromToken.decimals) : 0;
+      }
+
+      if (parsedValue > userBalance) {
+        setInsufficientBalance(true);
+      } else {
+        setInsufficientBalance(false);
+      }
+    } else {
+      setInsufficientBalance(false);
+    }
+
     if (fromToken && value) {
       const raw = (parseFloat(value) * Math.pow(10, fromToken.decimals)).toLocaleString('fullwide', { useGrouping: false });
       setRawAmount(raw);
@@ -472,13 +508,13 @@ function SwapInterface() {
     }
   };
 
-  const handleFromTokenSelect = (token) => {
+  const handleFromTokenSelect = (token: Token) => {
     setFromToken(token);
     setCompletedTx(null);
     setTxStatus(null);
   };
 
-  const handleToTokenSelect = (token) => {
+  const handleToTokenSelect = (token: Token) => {
     setToToken(token);
     setCompletedTx(null);
     setTxStatus(null);
@@ -489,53 +525,66 @@ function SwapInterface() {
     console.log('Balance updated:', balance);
   }, [balance]);
 
-  const calculatePriceImpact = (quote) => {
-    if (!quote?.quote?.allocations?.[0]) return null;
+  const calculatePriceImpact = (quote: any): string | null => {
+    if (!quote?.allocations?.[0]) return null;
 
-  const allocation = quote.quote.allocations[0];
-  const pool = allocation.route[0];
+    const allocation = quote.allocations[0];
+    const pool = allocation.route[0];
 
-  // Convert reserves to numbers using token decimals
-  const reserveA = parseFloat(pool.reserveA) / Math.pow(10, fromToken.decimals);
-  const reserveB = parseFloat(pool.reserveB) / Math.pow(10, toToken.decimals);
+    // Convert reserves to numbers using token decimals
+    const reserveA = parseFloat(pool.reserveA) / Math.pow(10, fromToken?.decimals || 18);
+    const reserveB = parseFloat(pool.reserveB) / Math.pow(10, toToken?.decimals || 18);
 
-  // Parse input amount (Token A) and output amount (Token B)
-  const amountIn = parseFloat(amount);
-  const amountOut = parseFloat(quote.quote.totalOutput) / Math.pow(10, toToken.decimals);
+    // Parse input amount (Token A) and output amount (Token B)
+    const amountIn = parseFloat(amount);
+    const amountOut = parseFloat(quote.quote.allocations[0].output) / Math.pow(10, toToken?.decimals || 18);
 
-  // Market price before trade
-  const marketPrice = reserveA / reserveB;
+    // Market price before trade
+    const marketPrice = reserveA / reserveB;
 
-  // Effective price paid
-  const effectivePrice = amountIn / amountOut;
+    // Effective price paid
+    const effectivePrice = amountIn / amountOut;
 
-  // Price impact
-  const priceImpact = ((effectivePrice - marketPrice) / marketPrice) * 100;
-  return Math.abs(priceImpact).toFixed(2);
+    // Price impact
+    const priceImpact = ((effectivePrice - marketPrice) / marketPrice) * 100;
+    return Math.abs(priceImpact).toFixed(2);
   };
 
-  const handleMaxAmount = async () => {
-    if (!fromToken || fromToken.id === "0000000000000000000000000000000000000000000000000000000000000000" || !balance) return;
-    
+  const handleMaxAmount = () => {
+    if (!fromToken || !balance || fromToken.symbol === 'ALPH') return;
+
     const tokenBalance = balance.tokenBalances?.find(t => t.id === fromToken.id);
     if (tokenBalance) {
-      const displayAmount = (parseFloat(tokenBalance.amount) / Math.pow(10, fromToken.decimals)).toLocaleString('fullwide', { useGrouping: false });
+      const newRawAmount = tokenBalance.amount;
+      console.log('newRawAmount', newRawAmount);
+      const displayAmount = (Number(newRawAmount) / Math.pow(10, fromToken.decimals)).toString();
+
       setAmount(displayAmount);
-      setRawAmount(tokenBalance.amount);
+      setRawAmount(newRawAmount);
+      setInsufficientBalance(false);
+      setTxStatus(null);
+      setCompletedTx(null);
     }
   };
 
-  const handleSlippageChange = (value) => {
+  const handleSlippageChange = (value: number) => {
     setSlippage(value);
   };
+
+  const debouncedFetchQuote = useCallback(debounce(fetchQuote, 500), [fetchQuote]);
+
+  useEffect(() => {
+    if (amount && fromToken && toToken) {
+      debouncedFetchQuote(false);
+    } else {
+      setQuote(null);
+    }
+  }, [amount, fromToken, toToken, debouncedFetchQuote]);
 
   return (
     <div className="App">
       <div className="wallet-header">
-        <AlephiumConnectButton 
-          
-        />
-
+        <AlephiumConnectButton />
       </div>
       
       <div className="swap-container">
@@ -606,7 +655,7 @@ function SwapInterface() {
               <div className="swap-section">
                 <div className="swap-header">
                   <span>You pay</span>
-                  {fromToken && fromToken.id !== "0000000000000000000000000000000000000000000000000000000000000000" && balance?.tokenBalances?.some(t => t.id === fromToken.id) && (
+                  {fromToken && fromToken.symbol !== 'ALPH' && connectionStatus === 'connected' && (
                     <button className="max-button" onClick={handleMaxAmount}>MAX</button>
                   )}
                 </div>
@@ -614,17 +663,21 @@ function SwapInterface() {
                   <AmountInput
                     value={amount}
                     onChange={handleAmountChange}
-                    disabled={!fromToken || !toToken}
+                    disabled={!fromToken}
                   />
                   <TokenSelector
                     selectedToken={fromToken}
                     onSelect={handleFromTokenSelect}
-                    tokens={tokens.filter(token => {
-                      if (token.id === "0000000000000000000000000000000000000000000000000000000000000000") {
-                        return parseFloat(balance?.balance || 0) > 0;
-                      }
-                      return balance?.tokenBalances?.some(tb => tb.id === token.id && parseFloat(tb.amount) > 0);
-                    })}
+                    tokens={
+                      connectionStatus !== 'connected'
+                        ? tokens
+                        : tokens.filter(token => {
+                            if (token.id === "0000000000000000000000000000000000000000000000000000000000000000") {
+                              return parseFloat(balance?.balance || '0') > 0;
+                            }
+                            return balance?.tokenBalances?.some(tb => tb.id === token.id && parseFloat(tb.amount) > 0);
+                          })
+                    }
                   />
                 </div>
                 <div className="network-label">on Alephium</div>
@@ -644,7 +697,8 @@ function SwapInterface() {
                 <div className="swap-input-header">You receive</div>
                 <div className="swap-input-row">
                   <AmountInput
-                    value={quote ? formatAmount(quote.quote.totalOutput, toToken?.decimals || 18) : ''}
+                    value={quote?.quote?.allocations?.[0]?.output ? 
+                      (parseFloat(quote.quote.allocations[0].output) / Math.pow(10, toToken?.decimals || 18)).toFixed(6) : '0'}
                     onChange={() => {}}
                     disabled={true}
                   />
@@ -697,9 +751,10 @@ function SwapInterface() {
             <button
               className="swap-button"
               onClick={handleSwap}
-              disabled={!quote || loading || isValidating}
+              disabled={!quote || loading || isValidating || insufficientBalance}
             >
-              {loading ? 'Loading...' : 
+              {insufficientBalance ? 'Insufficient balance' :
+               loading ? 'Loading...' : 
                isValidating ? 'Validating...' : 
                !fromToken || !toToken ? 'Select tokens' :
                !amount ? 'Enter amount' :
@@ -707,11 +762,11 @@ function SwapInterface() {
             </button>
           )}
 
-          {quote && quote.quote.allocations && quote.quote.allocations.length > 0 && (
+          {quote && (
             <div className="quote-info">
               <div className="quote-row">
                 <span>Exchange rate</span>
-                <span>1 {fromToken.symbol} = {calculateRate()} {toToken.symbol}</span>
+                <span>1 {fromToken?.symbol} = {calculateRate()} {toToken?.symbol}</span>
               </div>
 
               <div className="quote-row">
@@ -719,35 +774,19 @@ function SwapInterface() {
                 <span>{slippage}%</span>
               </div>
 
-              {quote.quote.allocations.length > 0 && (
+              {quote.route?.[0] && (
                 <div className="quote-row">
                   <span>DEX</span>
                   <span>
                     <a
-                      href={getDexLink(quote.quote.allocations[0].route[0].dex)}
+                      href={getDexLink(quote.route[0].dex)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="dex-link"
                     >
-                      {formatDexName(quote.quote.allocations[0].route[0].dex)} ↗
+                      {formatDexName(quote.route[0].dex)} ↗
                     </a>
                   </span>
-                </div>
-              )}
-              
-              {quote.quote.allocations.length > 1 && (
-                <div className="routes-section">
-                  <div className="routes-header">Routes</div>
-                  {quote.quote.allocations.map((allocation, index) => (
-                    <div key={index} className="route-row">
-                      <div className="route-percentage">
-                        {((parseFloat(allocation.output) / parseFloat(quote.quote.totalOutput)) * 100).toFixed(1)}%
-                      </div>
-                      <div className="route-path">
-                        {formatRoute(allocation.route)}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
@@ -761,26 +800,20 @@ function SwapInterface() {
       </div>
     </div>
   );
-}
+};
 
-function App() {
+const App: React.FC = () => {
   return (
     <AlephiumWalletProvider
       network="mainnet"
       addressGroup={0}
-      nodeProvider={nodeProvider}
       theme="rounded"
-      enableDebugLog={true}
     >
       <div className="App">
         <SwapInterface />
       </div>
     </AlephiumWalletProvider>
   );
-}
+};
 
-export default App;
-
-
-
-
+export default App; 

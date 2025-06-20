@@ -1,24 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useBalance, useWallet } from '@alephium/web3-react';
+import { Token } from '../types';
 import './TokenSelector.css';
 
-function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, excludeToken = null, tokens = [] }) {
+interface TokenSelectorProps {
+  selectedToken: Token | null;
+  onSelect: (token: Token) => void;
+  showOnlyWithBalance?: boolean;
+  excludeToken?: Token | null;
+  tokens: Token[];
+}
+
+const TokenSelector: React.FC<TokenSelectorProps> = ({ 
+  selectedToken, 
+  onSelect, 
+  showOnlyWithBalance = false, 
+  excludeToken = null, 
+  tokens = [] 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const searchInputRef = useRef(null);
-  const selectorRef = useRef(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const selectorRef = useRef<HTMLDivElement>(null);
   const { connectionStatus } = useWallet();
   const { balance } = useBalance();
 
-  // Debug logging for balance
-  useEffect(() => {
-    // No need for debug logging
-  }, [connectionStatus, balance, selectedToken]);
-
   // Handle click outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (selectorRef.current && !selectorRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (selectorRef.current && !selectorRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearchQuery('');
       }
@@ -41,7 +51,7 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
   }, [isOpen]);
 
   // Get token balance
-  const getTokenBalance = (tokenId) => {
+  const getTokenBalance = (tokenId: string): string => {
     if (!balance || connectionStatus !== 'connected') {
       return '0';
     }
@@ -74,7 +84,7 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
   };
 
   // Filter tokens to only show ones with balance
-  const hasBalance = (token) => {
+  const hasBalance = (token: Token): boolean => {
     if (!balance || connectionStatus !== 'connected') return true;
     const tokenBalance = getTokenBalance(token.symbol === 'ALPH' ? 'ALPH' : token.id);
     return parseFloat(tokenBalance) > 0;
@@ -99,10 +109,16 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
       return token.symbol === 'ALPH' || (matchesSearch && hasBalance(token));
     });
 
-  const handleTokenSelect = (token) => {
+  const handleTokenSelect = (token: Token) => {
     onSelect(token);
     setIsOpen(false);
     setSearchQuery('');
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement;
+    target.onerror = null;
+    target.src = 'https://via.placeholder.com/30';
   };
 
   return (
@@ -117,10 +133,7 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
               src={selectedToken.logoURI}
               alt={selectedToken.symbol}
               className="token-logo"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/30';
-              }}
+              onError={handleImageError}
             />
             <div className="token-info-container">
               <div className="token-symbol">{selectedToken.symbol}</div>
@@ -167,10 +180,7 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
                     src={token.logoURI} 
                     alt={token.symbol}
                     className="token-logo"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://via.placeholder.com/30';
-                    }}
+                    onError={handleImageError}
                   />
                   <div className="token-info">
                     <div className="token-symbol">{token.symbol}</div>
@@ -189,6 +199,6 @@ function TokenSelector({ selectedToken, onSelect, showOnlyWithBalance = false, e
       )}
     </div>
   );
-}
+};
 
 export default TokenSelector; 

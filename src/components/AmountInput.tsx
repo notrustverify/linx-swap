@@ -1,10 +1,17 @@
 import React from 'react';
 import './AmountInput.css';
 
-const AmountInput = ({ value, onChange, disabled, maxAmount }) => {
-  const handleChange = (e) => {
+interface AmountInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  maxAmount?: number;
+}
+
+const AmountInput: React.FC<AmountInputProps> = ({ value, onChange, disabled, maxAmount }) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    if (newValue === '' || isNaN(newValue)) {
+    if (newValue === '' || isNaN(Number(newValue))) {
       onChange('');
       return;
     }
