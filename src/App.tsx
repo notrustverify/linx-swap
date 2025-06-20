@@ -32,9 +32,15 @@ const SwapInterface: React.FC = () => {
   const [completedTx, setCompletedTx] = useState<string | null>(null);
   const [slippage, setSlippage] = useState<number>(1); // 1% default
   const [showSettings, setShowSettings] = useState<boolean>(false);
-  const tokensLoaded = useRef<boolean>(false);
   const [isRefreshSpinning, setIsRefreshSpinning] = useState<boolean>(false);
   const [insufficientBalance, setInsufficientBalance] = useState<boolean>(false);
+  const tokensLoaded = useRef<boolean>(false);
+
+  const amountRef = useRef(amount);
+  amountRef.current = amount;
+
+  const rawAmountRef = useRef(rawAmount);
+  rawAmountRef.current = rawAmount;
 
   // Debug logging for balance and connection status
   useEffect(() => {
@@ -72,10 +78,17 @@ const SwapInterface: React.FC = () => {
 
   const debounce = <T extends (...args: any[]) => any>(func: T, wait: number) => {
     let timeout: NodeJS.Timeout;
-    return (...args: Parameters<T>) => {
+
+    const debounced = (...args: Parameters<T>) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
+
+    debounced.cancel = () => {
+      clearTimeout(timeout);
+    };
+
+    return debounced;
   };
 
   const fetchQuote = useCallback(async (isAutoRefresh = false) => {
@@ -84,7 +97,7 @@ const SwapInterface: React.FC = () => {
       return;
     }
 
-    if (!fromToken || !toToken || !amount || parseFloat(amount) <= 0) {
+    if (!fromToken || !toToken || !amountRef.current || parseFloat(amountRef.current) <= 0) {
       setQuote(null);
       return;
     }
@@ -114,7 +127,7 @@ const SwapInterface: React.FC = () => {
       const requestBody: QuoteRequest = {
         tokenIn: fromToken.id,
         tokenOut: toToken.id,
-        amountIn: rawAmount,
+        amountIn: rawAmountRef.current,
         slippage: slippage * 100,
         senderAddress: senderInfo.address,
         senderPublicKey: senderInfo.publicKey,
@@ -152,7 +165,7 @@ const SwapInterface: React.FC = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [fromToken, toToken, amount, rawAmount, account, signer, balance, slippage, isValidating, txStatus, isRefreshing]);
+  }, [fromToken, toToken, account, signer, balance, slippage, isValidating, txStatus, isRefreshing]);
 
   // Auto-refresh effect
   useEffect(() => {
@@ -173,7 +186,7 @@ const SwapInterface: React.FC = () => {
     let timeoutId: NodeJS.Timeout | null = null;
 
     const updateQuote = async () => {
-      if (!fromToken || !toToken || !amount || parseFloat(amount) <= 0 || isValidating) {
+      if (!fromToken || !toToken || !amountRef.current || parseFloat(amountRef.current) <= 0 || isValidating) {
         setQuote(null);
         setNextUpdateIn(30);
         return;
@@ -209,7 +222,7 @@ const SwapInterface: React.FC = () => {
       clearInterval(interval);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [fromToken?.id, toToken?.id, amount, isValidating, fetchQuote, slippage]);
+  }, [fromToken?.id, toToken?.id, amountRef, isValidating, fetchQuote, slippage]);
 
   const handleRefresh = () => {
     if (!isRefreshing && !isValidating) {
@@ -478,6 +491,7 @@ const SwapInterface: React.FC = () => {
   const handleAmountChange = (value: string) => {
     setTxStatus(null);
     setCompletedTx(null);
+    setNextUpdateIn(30);
     setAmount(value);
 
     const parsedValue = parseFloat(value);
@@ -564,6 +578,7 @@ const SwapInterface: React.FC = () => {
       setInsufficientBalance(false);
       setTxStatus(null);
       setCompletedTx(null);
+      setNextUpdateIn(30);
     }
   };
 
@@ -574,12 +589,13 @@ const SwapInterface: React.FC = () => {
   const debouncedFetchQuote = useCallback(debounce(fetchQuote, 500), [fetchQuote]);
 
   useEffect(() => {
-    if (amount && fromToken && toToken) {
+    if (amount && fromToken && toToken && !insufficientBalance) {
       debouncedFetchQuote(false);
     } else {
+      debouncedFetchQuote.cancel();
       setQuote(null);
     }
-  }, [amount, fromToken, toToken, debouncedFetchQuote]);
+  }, [amount, fromToken, toToken, debouncedFetchQuote, insufficientBalance]);
 
   return (
     <div className="App">
@@ -770,22 +786,34 @@ const SwapInterface: React.FC = () => {
               </div>
 
               <div className="quote-row">
+                <span>Linx Fee (0.7%)</span>
+                <span>
+                  {(parseFloat(amount) * 0.007).toFixed(6)} {fromToken?.symbol}
+                </span>
+              </div>
+
+              <div className="quote-row">
                 <span>Max slippage</span>
                 <span>{slippage}%</span>
               </div>
 
-              {quote.route?.[0] && (
+              {quote.quote?.allocations?.[0]?.route && quote.quote.allocations[0].route.length > 0 && (
                 <div className="quote-row">
-                  <span>DEX</span>
+                  <span>Exchange</span>
                   <span>
-                    <a
-                      href={getDexLink(quote.route[0].dex)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="dex-link"
-                    >
-                      {formatDexName(quote.route[0].dex)} ↗
-                    </a>
+                    {quote.quote.allocations[0].route.map((r, index) => (
+                      <React.Fragment key={r.id}>
+                        <a
+                          href={getDexLink(r.dex)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="dex-link"
+                        >
+                          {formatDexName(r.dex)}
+                        </a>
+                        {index < quote.quote.allocations[0].route.length - 1 && ' → '}
+                      </React.Fragment>
+                    ))}
                   </span>
                 </div>
               )}
