@@ -34,6 +34,7 @@ const SwapInterface: React.FC = () => {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [isRefreshSpinning, setIsRefreshSpinning] = useState<boolean>(false);
   const [insufficientBalance, setInsufficientBalance] = useState<boolean>(false);
+  const [feeInfo, setFeeInfo] = useState<{ amount: string; percentage: string } | null>(null);
   const tokensLoaded = useRef<boolean>(false);
 
   const amountRef = useRef(amount);
@@ -597,6 +598,33 @@ const SwapInterface: React.FC = () => {
     }
   }, [amount, fromToken, toToken, debouncedFetchQuote, insufficientBalance]);
 
+  useEffect(() => {
+    if (quote && fromToken && rawAmountRef.current) {
+      try {
+        const userInputRaw = BigInt(rawAmountRef.current);
+        const amountInQuote = BigInt(quote.quote.allocations[0].amount);
+
+        if (userInputRaw > 0n) {
+          const feeRaw = userInputRaw - amountInQuote;
+          const feeDisplay = (Number(feeRaw) / Math.pow(10, fromToken.decimals)).toFixed(6);
+          const percentage = (Number(feeRaw) * 100) / Number(userInputRaw);
+
+          setFeeInfo({
+            amount: feeDisplay,
+            percentage: percentage.toFixed(1),
+          });
+        } else {
+          setFeeInfo(null);
+        }
+      } catch (e) {
+        console.error("Error calculating fee:", e);
+        setFeeInfo(null);
+      }
+    } else {
+      setFeeInfo(null);
+    }
+  }, [quote, fromToken]);
+
   return (
     <div className="App">
       <div className="wallet-header">
@@ -785,12 +813,14 @@ const SwapInterface: React.FC = () => {
                 <span>1 {fromToken?.symbol} = {calculateRate()} {toToken?.symbol}</span>
               </div>
 
-              <div className="quote-row">
-                <span>Linx Fee (0.7%)</span>
-                <span>
-                  {(parseFloat(amount) * 0.007).toFixed(6)} {fromToken?.symbol}
-                </span>
-              </div>
+              {feeInfo && (
+                <div className="quote-row">
+                  <span>Fee ({feeInfo.percentage}%)</span>
+                  <span>
+                    {feeInfo.amount} {fromToken?.symbol}
+                  </span>
+                </div>
+              )}
 
               <div className="quote-row">
                 <span>Max slippage</span>
