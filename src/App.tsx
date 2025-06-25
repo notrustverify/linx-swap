@@ -458,9 +458,9 @@ const SwapInterface: React.FC = () => {
   };
 
   const calculateRate = (): string => {
-    if (!quote?.quote?.allocations?.[0]?.output || !toToken) return '0';
+    if (!quote?.quote?.totalOutput || !toToken) return '0';
     const amountIn = parseFloat(amount);
-    const amountOut = parseFloat(quote.quote.allocations[0].output) / Math.pow(10, toToken.decimals);
+    const amountOut = parseFloat(quote.quote.totalOutput) / Math.pow(10, toToken.decimals);
     return (amountOut / amountIn).toFixed(6);
   };
 
@@ -602,16 +602,15 @@ const SwapInterface: React.FC = () => {
     if (quote && fromToken && rawAmountRef.current) {
       try {
         const userInputRaw = BigInt(rawAmountRef.current);
-        const amountInQuote = BigInt(quote.quote.allocations[0].amount);
 
         if (userInputRaw > 0n) {
-          const feeRaw = userInputRaw - amountInQuote;
-          const feeDisplay = (Number(feeRaw) / Math.pow(10, fromToken.decimals)).toFixed(6);
-          const percentage = (Number(feeRaw) * 100) / Number(userInputRaw);
+          const feePercentage = 0.7;
+          const feeAmount = (Number(userInputRaw) * feePercentage) / 100;
+          const feeDisplay = (feeAmount / Math.pow(10, fromToken.decimals)).toFixed(5);
 
           setFeeInfo({
             amount: feeDisplay,
-            percentage: percentage.toFixed(1),
+            percentage: feePercentage.toFixed(1),
           });
         } else {
           setFeeInfo(null);
@@ -741,8 +740,8 @@ const SwapInterface: React.FC = () => {
                 <div className="swap-input-header">You receive</div>
                 <div className="swap-input-row">
                   <AmountInput
-                    value={quote?.quote?.allocations?.[0]?.output ? 
-                      (parseFloat(quote.quote.allocations[0].output) / Math.pow(10, toToken?.decimals || 18)).toFixed(6) : '0'}
+                    value={quote?.quote?.totalOutput ? 
+                      (parseFloat(quote.quote.totalOutput) / Math.pow(10, toToken?.decimals || 18)).toFixed(6) : '0'}
                     onChange={() => {}}
                     disabled={true}
                   />
@@ -827,21 +826,26 @@ const SwapInterface: React.FC = () => {
                 <span>{slippage}%</span>
               </div>
 
-              {quote.quote?.allocations?.[0]?.route && quote.quote.allocations[0].route.length > 0 && (
+              {quote.quote?.allocations && (
                 <div className="quote-row">
                   <span>Exchange</span>
                   <span>
-                    {quote.quote.allocations[0].route.map((r, index) => (
-                      <React.Fragment key={r.id}>
-                        <a
-                          href={getDexLink(r.dex)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="dex-link"
-                        >
-                          {formatDexName(r.dex)}
-                        </a>
-                        {index < quote.quote.allocations[0].route.length - 1 && ' → '}
+                    {quote.quote.allocations.map((allocation, allocIndex) => (
+                      <React.Fragment key={`allocation-${allocIndex}`}>
+                        {allocation.route.map((r, index) => (
+                          <React.Fragment key={r.id}>
+                            <a
+                              href={getDexLink(r.dex)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="dex-link"
+                            >
+                              {formatDexName(r.dex)}
+                            </a>
+                            {index < allocation.route.length - 1 && ' → '}
+                          </React.Fragment>
+                        ))}
+                        {allocIndex < quote.quote.allocations.length - 1 && ' + '}
                       </React.Fragment>
                     ))}
                   </span>
