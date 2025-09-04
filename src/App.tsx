@@ -71,8 +71,9 @@ const SwapInterface: React.FC = () => {
         address: account.address,
         publicKey: account.publicKey,
         recipient: account.address,
-        group: account.group
-      };
+        keyType: account.keyType,
+        group: 0
+            };
     }
     return undefined;
   };
@@ -132,7 +133,8 @@ const SwapInterface: React.FC = () => {
         slippage: slippage * 100,
         senderAddress: senderInfo.address,
         senderPublicKey: senderInfo.publicKey,
-        recipient: senderInfo.recipient
+        recipient: senderInfo.recipient,
+        keyType: senderInfo.keyType
       };
 
       const response = await fetch('https://api.linxlabs.org/v1/quote', {

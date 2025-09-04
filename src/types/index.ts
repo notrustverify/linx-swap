@@ -51,6 +51,7 @@ export interface SenderInfo {
   address: string;
   publicKey: string;
   recipient: string;
+  keyType: string;
   group: number;
 }
 
@@ -62,6 +63,7 @@ export interface QuoteRequest {
   senderAddress: string;
   senderPublicKey: string;
   recipient: string;
+  keyType: string;
 }
 
 export interface QuoteResponse {
