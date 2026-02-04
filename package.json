@@ -18,6 +18,9 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.0"
   },
+  "overrides": {
+    "error-ex": "1.3.2"
+  },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.3",

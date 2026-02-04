@@ -137,7 +137,7 @@ const SwapInterface: React.FC = () => {
         keyType: senderInfo.keyType
       };
 
-      const response = await fetch('https://api.linxlabs.org/v1/quote', {
+      const response = await fetch('https://api.linxlabs.org/swap/v1/quote', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
